@@ -21,6 +21,7 @@ Run `mcp-graphql` with the correct endpoint, it will automatically try to intros
 | `ALLOW_MUTATIONS` | Enable mutation operations (disabled by default) | `false` |
 | `NAME` | Name of the MCP server | `mcp-graphql` |
 | `SCHEMA` | Path to a local GraphQL schema file or URL (optional) | - |
+| `GRAPHQL_DIR` | Directory containing .graphql/.gql files for operations | `./graphql` |
 
 ### Examples
 
@@ -39,6 +40,9 @@ ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
 
 # Using a schema file hosted at a URL
 ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql npx mcp-graphql
+
+# Using GraphQL files from a custom directory
+ENDPOINT=http://localhost:3000/graphql GRAPHQL_DIR=./my-queries npx mcp-graphql
 ```
 
 ## Resources
@@ -47,12 +51,14 @@ ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql
 
 ## Available Tools
 
-The server provides two main tools:
+The server provides several tools:
 
 1. **introspect-schema**: This tool retrieves the GraphQL schema. Use this first if you don't have access to the schema as a resource.
 This uses either the local schema file, a schema file hosted at a URL, or an introspection query.
 
 2. **query-graphql**: Execute GraphQL queries against the endpoint. By default, mutations are disabled unless `ALLOW_MUTATIONS` is set to `true`.
+
+3. **Dynamic tools from .graphql files**: Any GraphQL operations defined in `.graphql` or `.gql` files within the `GRAPHQL_DIR` directory are automatically registered as MCP tools. Tool names follow the pattern `gql-{operation-name}` (e.g., `gql-get-user`, `gql-create-post`).
 
 ## Installation
 
@@ -81,9 +87,57 @@ It can be manually installed to Claude:
 }
 ```
 
+## GraphQL File Support
+
+You can define GraphQL operations in `.graphql` or `.gql` files, and they will be automatically registered as MCP tools. This allows you to:
+
+- Version control your GraphQL operations
+- Organize operations by type or domain
+- Reuse common queries across different contexts
+- Type-check operations against your schema
+
+### File Structure Example
+
+```
+graphql/
+├── queries/
+│   ├── getUser.graphql
+│   ├── listPosts.graphql
+│   └── searchUsers.graphql
+└── mutations/
+    ├── createPost.graphql
+    └── updateUser.graphql
+```
+
+### Operation File Example
+
+```graphql
+# getUser.graphql
+query GetUser($id: ID!) {
+  user(id: $id) {
+    id
+    name
+    email
+    createdAt
+  }
+}
+```
+
+This operation will be available as the `gql-get-user` tool, accepting an `id` parameter.
+
+### Naming Conventions
+
+- Operations with explicit names use that name (e.g., `query GetUser` → `gql-get-user`)
+- Operations without names use the filename (e.g., `userProfile.graphql` → `gql-user-profile`)
+- Names are converted to kebab-case for consistency
+
 ## Security Considerations
 
 Mutations are disabled by default as a security measure to prevent an LLM from modifying your database or service data. Consider carefully before enabling mutations in production environments.
+
+When using GraphQL files:
+- Mutation operations in `.graphql` files are skipped unless `ALLOW_MUTATIONS=true`
+- Each operation is executed with the same headers and endpoint configuration
 
 ## Customize for your own server
 

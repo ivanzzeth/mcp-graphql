@@ -11,6 +11,13 @@ import {
 	introspectSchemaFromUrl,
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
+import {
+	loadAllGraphQLOperations,
+	createVariableSchema,
+	generateToolName,
+	generateToolDescription,
+	type GraphQLOperation,
+} from "./helpers/graphql-files.js";
 
 // Check for deprecated command line arguments
 checkDeprecatedArguments();
@@ -33,6 +40,7 @@ const EnvSchema = z.object({
 			}
 		}),
 	SCHEMA: z.string().optional(),
+	GRAPHQL_DIR: z.string().default("./graphql"),
 });
 
 const env = EnvSchema.parse(process.env);
@@ -214,7 +222,107 @@ server.tool(
 	},
 );
 
+async function registerGraphQLFileTools() {
+	const operations = await loadAllGraphQLOperations(env.GRAPHQL_DIR);
+	
+	if (operations.length > 0) {
+		console.error(
+			`Found ${operations.length} GraphQL operations in ${env.GRAPHQL_DIR}`,
+		);
+	}
+
+	for (const operation of operations) {
+		// Skip mutations if not allowed
+		if (operation.type === "mutation" && !env.ALLOW_MUTATIONS) {
+			console.error(
+				`Skipping mutation ${operation.name} (mutations disabled)`,
+			);
+			continue;
+		}
+
+		const toolName = generateToolName(operation);
+		const toolDescription = generateToolDescription(operation);
+		const variableSchema = createVariableSchema(operation.variables);
+
+		server.tool(
+			toolName,
+			toolDescription,
+			variableSchema.shape,
+			async (variables) => {
+				try {
+					const response = await fetch(env.ENDPOINT, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							...env.HEADERS,
+						},
+						body: JSON.stringify({
+							query: operation.content,
+							variables,
+						}),
+					});
+
+					if (!response.ok) {
+						const responseText = await response.text();
+						return {
+							isError: true,
+							content: [
+								{
+									type: "text",
+									text: `GraphQL request failed: ${response.statusText}\n${responseText}`,
+								},
+							],
+						};
+					}
+
+					const data = await response.json();
+
+					if (data.errors && data.errors.length > 0) {
+						return {
+							isError: true,
+							content: [
+								{
+									type: "text",
+									text: `GraphQL errors: ${JSON.stringify(
+										data,
+										null,
+										2,
+									)}`,
+								},
+							],
+						};
+					}
+
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify(data, null, 2),
+							},
+						],
+					};
+				} catch (error) {
+					return {
+						isError: true,
+						content: [
+							{
+								type: "text",
+								text: `Failed to execute GraphQL operation: ${error}`,
+							},
+						],
+					};
+				}
+			},
+		);
+
+		console.error(`Registered tool: ${toolName}`);
+	}
+}
+
 async function main() {
+	// Register tools from GraphQL files
+	await registerGraphQLFileTools();
+
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 
