@@ -41,11 +41,12 @@ When testing GraphQL file loading functionality:
 
 ### Key Design Patterns
 
-**Environment Configuration**
-- All configuration via environment variables (no CLI args as of v1.0.0)
+**Configuration Precedence**
+- Environment variables ALWAYS override config files when set
+- Order: Env vars > GraphQL Config > Defaults
 - `ALLOW_MUTATIONS` defaults to `false` for safety
-- `GRAPHQL_DIR` enables file-based operation loading
 - Headers passed as JSON string in `HEADERS` env var
+- Supports standard GraphQL Config formats (.graphqlrc.yml, .json, .js)
 
 **Tool Registration Flow**
 1. On startup, scan `GRAPHQL_DIR` for GraphQL files

@@ -12,10 +12,27 @@ Run `mcp-graphql` with either a GraphQL Config file or environment variables. Th
 
 ### Configuration Methods
 
-The server supports two configuration methods (in priority order):
+The server supports two configuration methods with clear precedence:
 
-1. **GraphQL Config File** (Recommended) - Standard `.graphqlrc.yml`, `.graphqlrc.json`, or `graphql.config.js`
-2. **Environment Variables** - For backward compatibility and simple setups
+1. **Environment Variables** (highest priority) - Always override other settings
+2. **GraphQL Config File** - Standard `.graphqlrc.yml`, `.graphqlrc.json`, or `graphql.config.js`
+3. **Default Values** - Built-in fallbacks
+
+#### Precedence Order
+
+Environment variables **always** take precedence over config files. This allows:
+- Temporary overrides without changing files
+- Different settings per deployment
+- Easy debugging and testing
+- CI/CD pipeline customization
+
+Example:
+```bash
+# Override config file temporarily
+ENDPOINT=http://staging.api.com/graphql npm start
+
+# The ENDPOINT env var overrides any value in .graphqlrc.yml
+```
 
 ### GraphQL Config (Recommended)
 
@@ -45,7 +62,7 @@ Supported config formats:
 
 ### Environment Variables
 
-> **Note:** Environment variables are used as fallbacks when GraphQL Config is not present.
+> **Note:** Environment variables always take precedence over GraphQL Config values when set.
 
 | Environment Variable | Description | Default |
 |----------|-------------|---------|
@@ -96,18 +113,32 @@ This uses either the local schema file, a schema file hosted at a URL, or an int
 
 3. **Dynamic tools from .graphql files**: Any GraphQL operations defined in `.graphql` or `.gql` files within the `GRAPHQL_DIR` directory are automatically registered as MCP tools. Tool names follow the pattern `gql-{operation-name}` (e.g., `gql-get-user`, `gql-create-post`).
 
-## Migration from Environment Variables
+## Configuration Precedence
 
-To migrate from environment variables to GraphQL Config:
+The server uses a clear precedence order for configuration:
 
-1. Create a `.graphqlrc.yml` file
-2. Map your environment variables:
-   - `ENDPOINT` → `extensions.endpoints.default.url`
-   - `HEADERS` → `extensions.endpoints.default.headers`
-   - `SCHEMA` → `schema`
-   - `GRAPHQL_DIR` → `documents` (as glob patterns)
-3. Remove `GRAPHQL_DIR` from your environment
-4. Keep other env vars as fallbacks or use `${ENV_VAR}` in config
+```
+1. Environment Variables (highest priority)
+2. GraphQL Config File
+3. Default Values (lowest priority)
+```
+
+This means:
+- Setting `ENDPOINT=http://localhost:5000` will **always** override the config file
+- Useful for temporary changes without modifying files
+- Follows 12-factor app principles
+
+### Migration Guide
+
+To use GraphQL Config while maintaining flexibility:
+
+1. Create a `.graphqlrc.yml` file with your base configuration
+2. Use environment variables for deployment-specific overrides
+3. Config file paths:
+   - `ENDPOINT` overrides `extensions.endpoints.default.url`
+   - `HEADERS` overrides `extensions.endpoints.default.headers`
+   - `SCHEMA` overrides `schema`
+   - `GRAPHQL_DIR` provides fallback if no `documents` in config
 
 ## Installation
 

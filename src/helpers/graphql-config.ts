@@ -14,14 +14,17 @@ export interface GraphQLConfigOperation {
 }
 
 export interface ConfigWithOperations {
-	config: GraphQLConfig;
+	config: GraphQLConfig | null;
 	operations: GraphQLConfigOperation[];
-	endpoint?: string;
-	headers?: Record<string, string>;
+	endpoint: string;
+	headers: Record<string, string>;
 }
 
 /**
- * Load GraphQL Config and fallback to environment variables if not found
+ * Load GraphQL Config and resolve configuration with proper precedence:
+ * 1. Environment variables (highest priority)
+ * 2. GraphQL Config file
+ * 3. Default values
  */
 export async function loadGraphQLConfig(
 	rootDir: string = process.cwd(),
@@ -30,39 +33,60 @@ export async function loadGraphQLConfig(
 		HEADERS?: Record<string, any>;
 		SCHEMA?: string;
 		GRAPHQL_DIR?: string;
+		ALLOW_MUTATIONS?: boolean;
 	},
-): Promise<ConfigWithOperations | null> {
+): Promise<ConfigWithOperations> {
+	let config: GraphQLConfig | null = null;
+	let operations: GraphQLConfigOperation[] = [];
+	
 	try {
 		// Try to load GraphQL Config file
-		const config = await loadConfig({
+		config = await loadConfig({
 			rootDir,
 			throwOnMissing: false,
 			throwOnEmpty: false,
 		});
 
-		if (!config || !config.filepath) {
-			// No config file found, use environment variables
-			return null;
+		if (config && config.filepath) {
+			// Load operations from config documents
+			operations = await loadOperationsFromConfig(config);
 		}
-
-		// Get endpoint and headers from extensions if available
-		const extensions = config.rawConfig?.extensions as any;
-		const endpoint = extensions?.endpoints?.default?.url || env.ENDPOINT;
-		const headers = extensions?.endpoints?.default?.headers || env.HEADERS;
-
-		// Load all operations from documents
-		const operations = await loadOperationsFromConfig(config);
-
-		return {
-			config,
-			operations,
-			endpoint,
-			headers: typeof headers === 'string' ? JSON.parse(headers) : headers,
-		};
 	} catch (error) {
 		console.error("Failed to load GraphQL Config:", error);
-		return null;
 	}
+
+	// If no config or no operations from config, try directory fallback
+	if (operations.length === 0 && env.GRAPHQL_DIR) {
+		operations = await loadOperationsFromDirectory(env.GRAPHQL_DIR);
+	}
+
+	// Resolve configuration with proper precedence:
+	// 1. Environment variables (highest priority)
+	// 2. GraphQL Config file
+	// 3. Default values
+	const extensions = config?.rawConfig?.extensions as any;
+	
+	const endpoint = 
+		env.ENDPOINT ||  // Environment variable takes precedence
+		extensions?.endpoints?.default?.url || // Then config file
+		'http://localhost:4000/graphql'; // Default
+	
+	// Parse headers with precedence
+	let headers: Record<string, string> = {};
+	if (env.HEADERS) {
+		// Environment variable takes precedence
+		headers = typeof env.HEADERS === 'string' ? JSON.parse(env.HEADERS) : env.HEADERS;
+	} else if (extensions?.endpoints?.default?.headers) {
+		// Then config file
+		headers = extensions.endpoints.default.headers;
+	}
+
+	return {
+		config,
+		operations,
+		endpoint,
+		headers,
+	};
 }
 
 /**

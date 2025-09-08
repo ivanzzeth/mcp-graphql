@@ -13,7 +13,6 @@ import {
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
 import {
 	loadGraphQLConfig,
-	loadOperationsFromDirectory,
 	createVariableSchema,
 	generateToolName,
 	generateToolDescription,
@@ -224,29 +223,25 @@ server.tool(
 );
 
 async function registerGraphQLFileTools() {
-	// Try to load GraphQL Config first
+	// Load configuration with proper precedence:
+	// 1. Environment variables (highest priority)
+	// 2. GraphQL Config file
+	// 3. Default values
 	const configResult = await loadGraphQLConfig(process.cwd(), env);
 	
-	let operations: GraphQLConfigOperation[];
-	let endpoint = env.ENDPOINT;
-	let headers = env.HEADERS;
+	const { operations, endpoint, headers, config } = configResult;
 	
-	if (configResult) {
-		// Use GraphQL Config
-		operations = configResult.operations;
-		endpoint = configResult.endpoint || env.ENDPOINT;
-		headers = configResult.headers || env.HEADERS;
+	if (config) {
 		console.error(
-			`Loaded ${operations.length} operations from GraphQL Config`,
+			`Loaded GraphQL Config from ${config.filepath}`,
 		);
-	} else {
-		// Fallback to directory scanning
-		operations = await loadOperationsFromDirectory(env.GRAPHQL_DIR);
-		if (operations.length > 0) {
-			console.error(
-				`Found ${operations.length} GraphQL operations in ${env.GRAPHQL_DIR}`,
-			);
-		}
+	}
+	
+	if (operations.length > 0) {
+		const source = config ? 'GraphQL Config' : env.GRAPHQL_DIR;
+		console.error(
+			`Found ${operations.length} operations from ${source}`,
+		);
 	}
 
 	for (const operation of operations) {
