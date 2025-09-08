@@ -12,12 +12,13 @@ import {
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
 import {
-	loadAllGraphQLOperations,
+	loadGraphQLConfig,
+	loadOperationsFromDirectory,
 	createVariableSchema,
 	generateToolName,
 	generateToolDescription,
-	type GraphQLOperation,
-} from "./helpers/graphql-files.js";
+	type GraphQLConfigOperation,
+} from "./helpers/graphql-config.js";
 
 // Check for deprecated command line arguments
 checkDeprecatedArguments();
@@ -223,12 +224,29 @@ server.tool(
 );
 
 async function registerGraphQLFileTools() {
-	const operations = await loadAllGraphQLOperations(env.GRAPHQL_DIR);
+	// Try to load GraphQL Config first
+	const configResult = await loadGraphQLConfig(process.cwd(), env);
 	
-	if (operations.length > 0) {
+	let operations: GraphQLConfigOperation[];
+	let endpoint = env.ENDPOINT;
+	let headers = env.HEADERS;
+	
+	if (configResult) {
+		// Use GraphQL Config
+		operations = configResult.operations;
+		endpoint = configResult.endpoint || env.ENDPOINT;
+		headers = configResult.headers || env.HEADERS;
 		console.error(
-			`Found ${operations.length} GraphQL operations in ${env.GRAPHQL_DIR}`,
+			`Loaded ${operations.length} operations from GraphQL Config`,
 		);
+	} else {
+		// Fallback to directory scanning
+		operations = await loadOperationsFromDirectory(env.GRAPHQL_DIR);
+		if (operations.length > 0) {
+			console.error(
+				`Found ${operations.length} GraphQL operations in ${env.GRAPHQL_DIR}`,
+			);
+		}
 	}
 
 	for (const operation of operations) {
@@ -250,11 +268,11 @@ async function registerGraphQLFileTools() {
 			variableSchema.shape,
 			async (variables) => {
 				try {
-					const response = await fetch(env.ENDPOINT, {
+					const response = await fetch(endpoint, {
 						method: "POST",
 						headers: {
 							"Content-Type": "application/json",
-							...env.HEADERS,
+							...headers,
 						},
 						body: JSON.stringify({
 							query: operation.content,

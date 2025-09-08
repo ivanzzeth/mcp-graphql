@@ -8,11 +8,42 @@ A Model Context Protocol server that enables LLMs to interact with GraphQL APIs.
 
 ## Usage
 
-Run `mcp-graphql` with the correct endpoint, it will automatically try to introspect your queries.
+Run `mcp-graphql` with either a GraphQL Config file or environment variables. The server will automatically load your GraphQL operations as MCP tools.
 
-### Environment Variables (Breaking change in 1.0.0)
+### Configuration Methods
 
-> **Note:** As of version 1.0.0, command line arguments have been replaced with environment variables.
+The server supports two configuration methods (in priority order):
+
+1. **GraphQL Config File** (Recommended) - Standard `.graphqlrc.yml`, `.graphqlrc.json`, or `graphql.config.js`
+2. **Environment Variables** - For backward compatibility and simple setups
+
+### GraphQL Config (Recommended)
+
+Create a `.graphqlrc.yml` file in your project root:
+
+```yaml
+schema: http://localhost:4000/graphql
+documents:
+  - './graphql/**/*.graphql'
+  - './operations/**/*.gql'
+extensions:
+  endpoints:
+    default:
+      url: http://localhost:4000/graphql
+      headers:
+        Authorization: Bearer ${API_TOKEN}
+```
+
+Supported config formats:
+- `.graphqlrc.yml` / `.graphqlrc.yaml`
+- `.graphqlrc.json`
+- `graphql.config.js` / `graphql.config.ts`
+- `.graphqlrc` (JSON or YAML)
+- `package.json` (under `graphql` key)
+
+### Environment Variables
+
+> **Note:** Environment variables are used as fallbacks when GraphQL Config is not present.
 
 | Environment Variable | Description | Default |
 |----------|-------------|---------|
@@ -41,8 +72,11 @@ ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
 # Using a schema file hosted at a URL
 ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql npx mcp-graphql
 
-# Using GraphQL files from a custom directory
+# Using GraphQL files from a custom directory (without config file)
 ENDPOINT=http://localhost:3000/graphql GRAPHQL_DIR=./my-queries npx mcp-graphql
+
+# Using GraphQL Config file (recommended)
+npx mcp-graphql  # Automatically loads .graphqlrc.yml or other config formats
 ```
 
 ## Resources
@@ -59,6 +93,19 @@ This uses either the local schema file, a schema file hosted at a URL, or an int
 2. **query-graphql**: Execute GraphQL queries against the endpoint. By default, mutations are disabled unless `ALLOW_MUTATIONS` is set to `true`.
 
 3. **Dynamic tools from .graphql files**: Any GraphQL operations defined in `.graphql` or `.gql` files within the `GRAPHQL_DIR` directory are automatically registered as MCP tools. Tool names follow the pattern `gql-{operation-name}` (e.g., `gql-get-user`, `gql-create-post`).
+
+## Migration from Environment Variables
+
+To migrate from environment variables to GraphQL Config:
+
+1. Create a `.graphqlrc.yml` file
+2. Map your environment variables:
+   - `ENDPOINT` → `extensions.endpoints.default.url`
+   - `HEADERS` → `extensions.endpoints.default.headers`
+   - `SCHEMA` → `schema`
+   - `GRAPHQL_DIR` → `documents` (as glob patterns)
+3. Remove `GRAPHQL_DIR` from your environment
+4. Keep other env vars as fallbacks or use `${ENV_VAR}` in config
 
 ## Installation
 
@@ -87,14 +134,50 @@ It can be manually installed to Claude:
 }
 ```
 
-## GraphQL File Support
+## GraphQL Config Support
 
-You can define GraphQL operations in `.graphql` or `.gql` files, and they will be automatically registered as MCP tools. This allows you to:
+The server now supports [GraphQL Config](https://graphql-config.com/), the standard configuration format used by GraphQL tools. This provides:
+
+- **Standard format**: Works with existing GraphQL tooling (VSCode, GraphQL Playground, etc.)
+- **Documents field**: Define operation files using glob patterns
+- **Multi-project support**: Different configurations for different environments
+- **Environment interpolation**: Use `${ENV_VAR}` in config values
+- **Schema validation**: Validate operations against your schema
+
+### Benefits of GraphQL Config
 
 - Version control your GraphQL operations
+- Share configuration across tools (IDEs, linters, code generators)
 - Organize operations by type or domain
-- Reuse common queries across different contexts
 - Type-check operations against your schema
+
+### Multi-Project Configuration
+
+Support multiple GraphQL APIs in a single configuration:
+
+```yaml
+# .graphqlrc.yml
+projects:
+  production:
+    schema: https://api.example.com/graphql
+    documents: './graphql/production/**/*.graphql'
+    extensions:
+      endpoints:
+        default:
+          url: https://api.example.com/graphql
+          headers:
+            Authorization: Bearer ${PROD_TOKEN}
+  
+  development:
+    schema: http://localhost:4000/graphql
+    documents: './graphql/dev/**/*.graphql'
+    extensions:
+      endpoints:
+        default:
+          url: http://localhost:4000/graphql
+```
+
+Tools from multi-project configs are named: `gql-{project}-{operation}`
 
 ### File Structure Example
 
@@ -129,6 +212,7 @@ This operation will be available as the `gql-get-user` tool, accepting an `id` p
 
 - Operations with explicit names use that name (e.g., `query GetUser` → `gql-get-user`)
 - Operations without names use the filename (e.g., `userProfile.graphql` → `gql-user-profile`)
+- Multi-project operations include project name (e.g., `gql-production-get-user`)
 - Names are converted to kebab-case for consistency
 
 ## Security Considerations
