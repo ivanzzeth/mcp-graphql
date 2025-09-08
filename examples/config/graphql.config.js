@@ -10,9 +10,8 @@ module.exports = {
   
   // Documents - GraphQL operations to load
   documents: [
-    './graphql/**/*.graphql',
-    './graphql/**/*.gql',
-    './operations/**/*.graphql'
+    './examples/graphql/**/*.graphql',
+    './examples/graphql/**/*.gql'
   ],
   
   // Extensions for additional configuration
@@ -47,7 +46,7 @@ module.exports = {
   projects: {
     production: {
       schema: 'https://api.example.com/graphql',
-      documents: './graphql/production/*.graphql',
+      documents: './examples/graphql/production/*.graphql',
       extensions: {
         endpoints: {
           default: {
@@ -62,7 +61,7 @@ module.exports = {
     
     development: {
       schema: 'http://localhost:4000/graphql',
-      documents: './graphql/dev/*.graphql',
+      documents: './examples/graphql/dev/*.graphql',
       extensions: {
         endpoints: {
           default: {

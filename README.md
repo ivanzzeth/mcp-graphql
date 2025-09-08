@@ -24,8 +24,8 @@ Create a `.graphqlrc.yml` file in your project root:
 ```yaml
 schema: http://localhost:4000/graphql
 documents:
-  - './graphql/**/*.graphql'
-  - './operations/**/*.gql'
+  - './operations/**/*.graphql'
+  - './queries/**/*.gql'
 extensions:
   endpoints:
     default:
@@ -33,6 +33,8 @@ extensions:
       headers:
         Authorization: Bearer ${API_TOKEN}
 ```
+
+**See [`examples/`](./examples) directory for complete configuration examples.**
 
 Supported config formats:
 - `.graphqlrc.yml` / `.graphqlrc.yaml`
@@ -151,48 +153,25 @@ The server now supports [GraphQL Config](https://graphql-config.com/), the stand
 - Organize operations by type or domain
 - Type-check operations against your schema
 
-### Multi-Project Configuration
+### Examples
 
-Support multiple GraphQL APIs in a single configuration:
+The [`examples/`](./examples) directory contains:
+- **Configuration examples** in YAML, JSON, and JavaScript formats
+- **GraphQL operation examples** for queries and mutations
+- **Multi-project setup** for managing multiple APIs
 
-```yaml
-# .graphqlrc.yml
-projects:
-  production:
-    schema: https://api.example.com/graphql
-    documents: './graphql/production/**/*.graphql'
-    extensions:
-      endpoints:
-        default:
-          url: https://api.example.com/graphql
-          headers:
-            Authorization: Bearer ${PROD_TOKEN}
-  
-  development:
-    schema: http://localhost:4000/graphql
-    documents: './graphql/dev/**/*.graphql'
-    extensions:
-      endpoints:
-        default:
-          url: http://localhost:4000/graphql
+Quick start:
+```bash
+# Copy an example config to your project
+cp examples/config/graphqlrc.yml .graphqlrc.yml
+
+# View example operations
+ls examples/graphql/
 ```
 
-Tools from multi-project configs are named: `gql-{project}-{operation}`
+### Operation Files
 
-### File Structure Example
-
-```
-graphql/
-├── queries/
-│   ├── getUser.graphql
-│   ├── listPosts.graphql
-│   └── searchUsers.graphql
-└── mutations/
-    ├── createPost.graphql
-    └── updateUser.graphql
-```
-
-### Operation File Example
+Define your GraphQL operations in `.graphql` or `.gql` files:
 
 ```graphql
 # getUser.graphql
@@ -201,12 +180,13 @@ query GetUser($id: ID!) {
     id
     name
     email
-    createdAt
   }
 }
 ```
 
-This operation will be available as the `gql-get-user` tool, accepting an `id` parameter.
+This operation becomes available as the `gql-get-user` MCP tool.
+
+**See [`examples/graphql/`](./examples/graphql) for more operation examples.**
 
 ### Naming Conventions
 

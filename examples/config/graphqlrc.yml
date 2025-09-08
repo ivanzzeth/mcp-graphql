@@ -9,10 +9,9 @@ schema: ${SCHEMA:-http://localhost:4000/graphql}
 
 # Documents - GraphQL operations to load as MCP tools
 # Supports glob patterns
-# Update these paths to match your project structure
 documents:
-  - './operations/**/*.graphql'
-  - './operations/**/*.gql'
+  - './examples/graphql/**/*.graphql'
+  - './examples/graphql/**/*.gql'
 
 # Extensions for additional configuration
 extensions:
@@ -32,7 +31,7 @@ extensions:
 #   # Production API
 #   production:
 #     schema: https://api.example.com/graphql
-#     documents: './operations/production/**/*.graphql'
+#     documents: './examples/graphql/production/**/*.graphql'
 #     extensions:
 #       endpoints:
 #         default:
@@ -43,7 +42,7 @@ extensions:
 #   # Development API
 #   development:
 #     schema: http://localhost:4000/graphql
-#     documents: './operations/dev/**/*.graphql'
+#     documents: './examples/graphql/dev/**/*.graphql'
 #     extensions:
 #       endpoints:
 #         default:
