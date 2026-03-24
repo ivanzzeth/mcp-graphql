@@ -97,7 +97,7 @@ const endpointParamDescription =
 
 server.tool(
 	"introspect-schema",
-	`Introspect the GraphQL schema. Returns a compact summary by default to save context. Use detail='full' for complete SDL, or detail='types' with specific type names for detailed type info. Supports multiple endpoints.`,
+	`Introspect the GraphQL schema. Returns a compact summary by default to save context. Use detail='full' for complete SDL, or detail='types' with specific type names for detailed type info. Supports multiple endpoints. TIP: Check Query fields for pagination args (first, skip, after, orderBy) to plan efficient queries.`,
 	{
 		// This is a workaround to help clients that can't handle an empty object as an argument
 		__ignore__: z
@@ -200,7 +200,7 @@ server.tool(
 
 server.tool(
 	"query-graphql",
-	`Query a GraphQL endpoint. Supports multiple endpoints, CSV export (output_format='csv'), and row limiting (max_rows). Large responses are automatically written to file with a summary returned.`,
+	`Query a GraphQL endpoint. Supports multiple endpoints, CSV export (output_format='csv'), and row limiting (max_rows). Large responses are automatically written to file with a summary returned. IMPORTANT: Always use pagination (first/skip or first/after) in your GraphQL queries to avoid timeouts on large datasets. Start with small page sizes (first: 10-50) and increase only if needed.`,
 	{
 		query: z.string(),
 		variables: z.string().optional(),

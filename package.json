@@ -2,7 +2,7 @@
 	"name": "multi-graphql-mcp",
 	"module": "index.ts",
 	"type": "module",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"repository": "github:ivanzzeth/mcp-graphql",
 	"license": "MIT",
 	"bin": {
