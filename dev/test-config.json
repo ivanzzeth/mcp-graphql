@@ -1,0 +1,19 @@
+{
+  "endpoints": [
+    {
+      "name": "polymarket-orders",
+      "url": "https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/orderbook-subgraph/0.0.1/gn"
+    },
+    {
+      "name": "polymarket-activity",
+      "url": "https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/activity-subgraph/0.0.4/gn"
+    },
+    {
+      "name": "polymarket-pnl",
+      "url": "https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/pnl-subgraph/0.0.14/gn"
+    }
+  ],
+  "responseSizeThreshold": 2048,
+  "outputDir": "/tmp/mcp-graphql-test/",
+  "defaultEndpoint": "polymarket-orders"
+}

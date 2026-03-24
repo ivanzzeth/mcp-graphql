@@ -1,90 +1,134 @@
-# mcp-graphql
+# @ivanzzeth/mcp-graphql
 
-[![smithery badge](https://smithery.ai/badge/mcp-graphql)](https://smithery.ai/server/mcp-graphql)
+Enhanced fork of [mcp-graphql](https://github.com/blurrah/mcp-graphql) with multi-endpoint support and LLM context optimization.
 
-A Model Context Protocol server that enables LLMs to interact with GraphQL APIs. This implementation provides schema introspection and query execution capabilities, allowing models to discover and use GraphQL APIs dynamically.
+## What's New (v3.0.0)
 
-<a href="https://glama.ai/mcp/servers/4zwa4l8utf"><img width="380" height="200" src="https://glama.ai/mcp/servers/4zwa4l8utf/badge" alt="mcp-graphql MCP server" /></a>
+- **Multi-endpoint**: Single MCP instance connects to multiple GraphQL APIs
+- **Schema summary**: Compact summaries instead of full SDL in LLM context
+- **Response offloading**: Large responses written to file, summary returned inline
+- **CSV export**: Query results as CSV for data analysis
+- **Pagination**: Application-level `max_rows` truncation
 
-## Usage
+## Quick Start
 
-Run `mcp-graphql` with the correct endpoint, it will automatically try to introspect your queries.
+### Single endpoint (backward compatible)
 
-### Environment Variables (Breaking change in 1.0.0)
-
-> **Note:** As of version 1.0.0, command line arguments have been replaced with environment variables.
-
-| Environment Variable | Description | Default |
-|----------|-------------|---------|
-| `ENDPOINT` | GraphQL endpoint URL | `http://localhost:4000/graphql` |
-| `HEADERS` | JSON string containing headers for requests | `{}` |
-| `ALLOW_MUTATIONS` | Enable mutation operations (disabled by default) | `false` |
-| `NAME` | Name of the MCP server | `mcp-graphql` |
-| `SCHEMA` | Path to a local GraphQL schema file or URL (optional) | - |
-
-### Examples
-
-```bash
-# Basic usage with a local GraphQL server
-ENDPOINT=http://localhost:3000/graphql npx mcp-graphql
-
-# Using with custom headers
-ENDPOINT=https://api.example.com/graphql HEADERS='{"Authorization":"Bearer token123"}' npx mcp-graphql
-
-# Enable mutation operations
-ENDPOINT=http://localhost:3000/graphql ALLOW_MUTATIONS=true npx mcp-graphql
-
-# Using a local schema file instead of introspection
-ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
-
-# Using a schema file hosted at a URL
-ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql npx mcp-graphql
-```
-
-## Resources
-
-- **graphql-schema**: The server exposes the GraphQL schema as a resource that clients can access. This is either the local schema file, a schema file hosted at a URL, or based on an introspection query.
-
-## Available Tools
-
-The server provides two main tools:
-
-1. **introspect-schema**: This tool retrieves the GraphQL schema. Use this first if you don't have access to the schema as a resource.
-This uses either the local schema file, a schema file hosted at a URL, or an introspection query.
-
-2. **query-graphql**: Execute GraphQL queries against the endpoint. By default, mutations are disabled unless `ALLOW_MUTATIONS` is set to `true`.
-
-## Installation
-
-### Installing via Smithery
-
-To install GraphQL MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/mcp-graphql):
-
-```bash
-npx -y @smithery/cli install mcp-graphql --client claude
-```
-
-### Installing Manually
-
-It can be manually installed to Claude:
 ```json
 {
-    "mcpServers": {
-        "mcp-graphql": {
-            "command": "npx",
-            "args": ["mcp-graphql"],
-            "env": {
-                "ENDPOINT": "http://localhost:3000/graphql"
-            }
-        }
+  "mcpServers": {
+    "graphql": {
+      "command": "npx",
+      "args": ["@ivanzzeth/mcp-graphql"],
+      "env": {
+        "ENDPOINT": "http://localhost:3000/graphql"
+      }
     }
+  }
 }
 ```
 
-## Security Considerations
+### Multi-endpoint (new)
 
-Mutations are disabled by default as a security measure to prevent an LLM from modifying your database or service data. Consider carefully before enabling mutations in production environments.
+Create `mcp-graphql.config.json`:
 
-## Customize for your own server
+```json
+{
+  "endpoints": [
+    {
+      "name": "orders",
+      "url": "https://api.example.com/orders/graphql",
+      "headers": { "Authorization": "Bearer xxx" }
+    },
+    {
+      "name": "users",
+      "url": "https://api.example.com/users/graphql"
+    }
+  ],
+  "responseSizeThreshold": 2048,
+  "outputDir": "~/.mcp-graphql/output/",
+  "defaultEndpoint": "orders"
+}
+```
 
-This is a very generic implementation where it allows for complete introspection and for your users to do whatever (including mutations). If you need a more specific implementation I'd suggest to just create your own MCP and lock down tool calling for clients to only input specific query fields and/or variables. You can use this as a reference.
+```json
+{
+  "mcpServers": {
+    "graphql": {
+      "command": "npx",
+      "args": ["@ivanzzeth/mcp-graphql"],
+      "env": {
+        "MCP_GRAPHQL_CONFIG": "/path/to/mcp-graphql.config.json"
+      }
+    }
+  }
+}
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENDPOINT` | GraphQL endpoint URL (single-endpoint mode) | `http://localhost:4000/graphql` |
+| `HEADERS` | JSON string of request headers | `{}` |
+| `ALLOW_MUTATIONS` | Enable mutation operations | `false` |
+| `NAME` | MCP server name | `mcp-graphql` |
+| `SCHEMA` | Path/URL to schema file (skip introspection) | - |
+| `MCP_GRAPHQL_CONFIG` | Path to multi-endpoint config file | - |
+| `RESPONSE_SIZE_THRESHOLD` | Bytes before offloading to file | `2048` |
+| `MCP_GRAPHQL_OUTPUT_DIR` | Directory for output files | `/tmp/mcp-graphql/` |
+
+## Tools
+
+### introspect-schema
+
+Introspect the GraphQL schema with context-aware detail levels.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `endpoint` | string | default | Endpoint name to introspect |
+| `detail` | `summary` \| `full` \| `types` | `summary` | Detail level |
+| `types` | string[] | - | Type names (when `detail=types`) |
+
+**Summary mode** (default) returns compact markdown with type/field counts and root query fields. Full SDL is always written to file for reference.
+
+### query-graphql
+
+Execute GraphQL queries with export and pagination support.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | required | GraphQL query |
+| `variables` | string | - | JSON variables |
+| `endpoint` | string | default | Endpoint name |
+| `output_format` | `json` \| `csv` | `json` | Output format |
+| `max_rows` | number | - | Truncate results |
+
+Large JSON responses are automatically written to file with an inline summary. CSV output is always written to file.
+
+## Config File Format
+
+```jsonc
+{
+  "endpoints": [
+    {
+      "name": "my-api",           // Endpoint identifier
+      "url": "https://...",       // GraphQL URL (required)
+      "headers": {},              // Request headers
+      "allowMutations": false,    // Enable mutations
+      "schema": "./schema.graphql" // Optional local/remote schema
+    }
+  ],
+  "responseSizeThreshold": 2048,  // Bytes before file offload
+  "outputDir": "/tmp/mcp-graphql/", // Output directory
+  "defaultEndpoint": "my-api"     // Default endpoint name
+}
+```
+
+## Security
+
+Mutations are disabled by default per-endpoint. Enable with `"allowMutations": true` in endpoint config or `ALLOW_MUTATIONS=true` env var.
+
+## License
+
+MIT
