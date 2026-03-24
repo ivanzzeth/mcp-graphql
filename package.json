@@ -1,12 +1,12 @@
 {
-	"name": "@ivanzzeth/mcp-graphql",
+	"name": "multi-graphql-mcp",
 	"module": "index.ts",
 	"type": "module",
 	"version": "3.0.0",
 	"repository": "github:ivanzzeth/mcp-graphql",
 	"license": "MIT",
 	"bin": {
-		"mcp-graphql": "./dist/index.js"
+		"multi-graphql-mcp": "./dist/index.js"
 	},
 	"files": [
 		"dist"
