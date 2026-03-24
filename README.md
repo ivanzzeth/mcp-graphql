@@ -1,14 +1,21 @@
-# @ivanzzeth/mcp-graphql
+# multi-graphql-mcp
 
 Enhanced fork of [mcp-graphql](https://github.com/blurrah/mcp-graphql) with multi-endpoint support and LLM context optimization.
 
-## What's New (v3.0.0)
+## What's New (v3.0)
 
 - **Multi-endpoint**: Single MCP instance connects to multiple GraphQL APIs
 - **Schema summary**: Compact summaries instead of full SDL in LLM context
 - **Response offloading**: Large responses written to file, summary returned inline
 - **CSV export**: Query results as CSV for data analysis
 - **Pagination**: Application-level `max_rows` truncation
+- **Pagination guidance**: Tool descriptions hint LLMs to use `first/skip` to avoid timeouts
+
+## Install
+
+```bash
+npx -y multi-graphql-mcp
+```
 
 ## Quick Start
 
@@ -19,7 +26,7 @@ Enhanced fork of [mcp-graphql](https://github.com/blurrah/mcp-graphql) with mult
   "mcpServers": {
     "graphql": {
       "command": "npx",
-      "args": ["@ivanzzeth/mcp-graphql"],
+      "args": ["-y", "multi-graphql-mcp"],
       "env": {
         "ENDPOINT": "http://localhost:3000/graphql"
       }
@@ -28,9 +35,9 @@ Enhanced fork of [mcp-graphql](https://github.com/blurrah/mcp-graphql) with mult
 }
 ```
 
-### Multi-endpoint (new)
+### Multi-endpoint
 
-Create `mcp-graphql.config.json`:
+Create a config file (e.g. `graphql-endpoints.config.json`):
 
 ```json
 {
@@ -46,7 +53,7 @@ Create `mcp-graphql.config.json`:
     }
   ],
   "responseSizeThreshold": 2048,
-  "outputDir": "~/.mcp-graphql/output/",
+  "outputDir": "/tmp/mcp-graphql/",
   "defaultEndpoint": "orders"
 }
 ```
@@ -56,9 +63,9 @@ Create `mcp-graphql.config.json`:
   "mcpServers": {
     "graphql": {
       "command": "npx",
-      "args": ["@ivanzzeth/mcp-graphql"],
+      "args": ["-y", "multi-graphql-mcp"],
       "env": {
-        "MCP_GRAPHQL_CONFIG": "/path/to/mcp-graphql.config.json"
+        "MCP_GRAPHQL_CONFIG": "/path/to/graphql-endpoints.config.json"
       }
     }
   }
@@ -90,7 +97,7 @@ Introspect the GraphQL schema with context-aware detail levels.
 | `detail` | `summary` \| `full` \| `types` | `summary` | Detail level |
 | `types` | string[] | - | Type names (when `detail=types`) |
 
-**Summary mode** (default) returns compact markdown with type/field counts and root query fields. Full SDL is always written to file for reference.
+**Summary mode** (default) returns compact markdown with type/field counts and root query fields. Full SDL is always written to file for reference. TIP: Check Query fields for pagination args (`first`, `skip`, `after`, `orderBy`) to plan efficient queries.
 
 ### query-graphql
 
@@ -105,6 +112,8 @@ Execute GraphQL queries with export and pagination support.
 | `max_rows` | number | - | Truncate results |
 
 Large JSON responses are automatically written to file with an inline summary. CSV output is always written to file.
+
+**Important**: Always use pagination (`first`/`skip` or `first`/`after`) in your GraphQL queries to avoid timeouts on large datasets. Start with small page sizes (`first: 10-50`) and increase only if needed.
 
 ## Config File Format
 
